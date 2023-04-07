@@ -91,7 +91,7 @@ class CacheService {
         } else {
             debug('Publisher not initialized..Retrying');
             if (!_options) {
-                debug('Publisher not initialized.');
+                debug('Options not initialized.');
             } else {
                 _publisher = new Redis(_options);
                 if (!_publisher) {
