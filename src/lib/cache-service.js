@@ -90,11 +90,16 @@ class CacheService {
             return _publisher
         } else {
             debug('Publisher not initialized..Retrying');
-            _publisher = new Redis(_options);
-            if (!_publisher) {
-                throw new Error('Publisher not initialized')
+            if (!_options) {
+                debug('Publisher not initialized.');
             } else {
-                return _publisher
+                _publisher = new Redis(_options);
+                if (!_publisher) {
+                    throw new Error('Publisher not initialized')
+                } else {
+                    return _publisher
+                }
+
             }
         }
     }
@@ -491,7 +496,6 @@ class CacheService {
         if (metrics) {
             _metrics = metrics;
         }
-        console.log('DONE')
         return true;
     }
 

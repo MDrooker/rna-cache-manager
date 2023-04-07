@@ -57,7 +57,7 @@ async function listCurrentCacheKeys() {
                 }
             });
             stream.on('end', function () {
-                debug('done');
+
                 resolve(currentKeys);
             });
         }
@@ -91,7 +91,6 @@ async function fastPurge({ key, isMaster }) {
                 }
             });
             stream.on('end', function () {
-                debug('done');
                 resolve();
             });
         }
