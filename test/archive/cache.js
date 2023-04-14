@@ -3,8 +3,8 @@ import { caching, multiCaching } from 'cache-manager';
 import _ from "lodash";
 import redisStore from "cache-manager-ioredis-yet";
 import Redis from "ioredis";
-import { default as subscriptionInit } from '../lib/subscription.js'
-import { validateConfig } from '../lib/utils.js';
+import { default as subscriptionInit } from '../../src/lib/subscription.js'
+import { validateConfig } from '../../src/lib/utils.js';
 
 
 const debug = debugModule('rna:cache-manager');
