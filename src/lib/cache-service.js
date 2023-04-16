@@ -233,7 +233,7 @@ class CacheService {
     }
 
     getMultiCache() {
-        debugger
+
         if (_multiCache) {
             return _multiCache
         } else {
@@ -244,6 +244,7 @@ class CacheService {
         }
     }
     get multiCache() {
+
         if (_multiCache) {
             return _multiCache
         }
@@ -294,7 +295,6 @@ class CacheService {
                 }
             }
         } else {
-
             let returnPayload = cache.wrap(cacheKey, async function () {
                 fromSource = true
                 debug(`${cacheKey} - Getting from Source`);
@@ -388,7 +388,7 @@ class CacheService {
                 });
             }
             catch (error) {
-                console.log(error);
+                console.error(error);
             }
         });
 
@@ -447,8 +447,7 @@ class CacheService {
                 });
             }
             catch (error) {
-                debugger
-                console.log(error);
+                console.error(error);
             }
         });
 
@@ -508,7 +507,7 @@ export const { getRateLimiter,
     getSubscriber,
     getStaleCache,
     getCachePurgeChannel,
-
+    getMultiCache,
     init,
     wrap,
     listCurrentCacheKeys,

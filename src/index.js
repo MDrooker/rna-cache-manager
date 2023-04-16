@@ -1,7 +1,7 @@
 
 import { subscribeToRedis, publishToRedis } from './lib/subscription.js'
 
-import cacheManager, { init, getPublisher, getSubscriber, getRateLimiter, getStaleCache, multiCache, staleCache, redisCache, memoryCache, rateLimiter, publisher, subscriber, cachePurgeChannel } from './lib/cache-service.js'
+import cacheManager, { init, getPublisher, getSubscriber, getRateLimiter, getMultiCache, getStaleCache, multiCache, staleCache, redisCache, memoryCache, rateLimiter, publisher, subscriber, cachePurgeChannel } from './lib/cache-service.js'
 import { listCurrentCacheKeys, fastPurge, purge, wrap } from './lib/cache-service.js'
 
 
@@ -11,6 +11,7 @@ export {
     getPublisher,
     getSubscriber,
     getRateLimiter,
+    getMultiCache,
     getStaleCache,
     listCurrentCacheKeys,
     fastPurge,

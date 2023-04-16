@@ -1,5 +1,6 @@
 node_modules
 .*.sw*
+fixup
 .idea
 *.log
 **/config/*.json
