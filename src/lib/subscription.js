@@ -9,6 +9,7 @@ let _publisher = null
 
 async function subscribeToRedis({ channel, handler }) {
     let channelSubscriber = new Redis(redisConfigOptions);
+    debug(`Subscribing to Redis Channel ${channel}`)
     channelSubscriber.subscribe(channel, function (err, count) {
         if (err) {
             console.error(err);
@@ -16,6 +17,7 @@ async function subscribeToRedis({ channel, handler }) {
     });
     channelSubscriber.on("message", (channel, message) => {
         let channelHandler = subscriberMap.get(channel);
+        debug(`Received Message ${message} on Redis Channel ${channel}`)
         channelHandler({ channel, message });
     });
     subscriberMap.set(channel, handler);

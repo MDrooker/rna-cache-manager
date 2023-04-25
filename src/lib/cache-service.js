@@ -2,7 +2,7 @@ import { debugModule } from '@mdrooker/rna-logger'
 import { caching, multiCaching } from 'cache-manager';
 import redisStore from "cache-manager-ioredis-yet";
 import Redis from "ioredis";
-import { default as subscriptionInit } from './subscription.js'
+import { default as subscriptionInit, subscribeToRedis } from './subscription.js'
 
 import { validateConfig } from './utils.js';
 const debug = debugModule('rna:cache-manager:cache');
@@ -50,7 +50,7 @@ const parseConfig = ({ config }) => {
 }
 
 function isCacheableValue(value) {
-    if (_.isObject(value)) {
+    if (_.isObject(value) || _.isArray(value) || _.isString(value) || _.isNumber(value) || _.isBoolean(value) || undefined) {
         return true;
     }
     else {
@@ -166,14 +166,20 @@ class CacheService {
             return _staleCache
         } else {
             debug('Stale Cache not initialized..Retrying');
-            caching('memory', { store: 'memory', max: MEMORY_CACHE_SIZE, ttl: MEMORY_CACHE_TIME }).then((cache) => {
-                _staleCache = cache
-                if (!_staleCache) {
-                    throw new Error('Stale Cache not initialized')
-                } else {
-                    return _staleCache
-                }
-            });
+            caching('memory',
+                {
+                    store: 'memory',
+                    isCacheable: isCacheableValue,
+                    max: MEMORY_CACHE_SIZE,
+                    ttl: MEMORY_CACHE_TIME
+                }).then((cache) => {
+                    _staleCache = cache
+                    if (!_staleCache) {
+                        throw new Error('Stale Cache not initialized')
+                    } else {
+                        return _staleCache
+                    }
+                });
         }
     }
     get redisCache() {
@@ -191,10 +197,11 @@ class CacheService {
         if (!_redisCache) {
             return _redisCache
         } else {
+
             debug('Redis Cache not initialized..Retrying');
             caching(_rstore,
                 {
-                    isCacheableValue: isCacheableValue
+                    isCacheable: isCacheableValue
                 }).then((cache) => {
                     _redisCache = cache
                     if (!_redisCache) {
@@ -221,7 +228,7 @@ class CacheService {
             return _memoryCache
         } else {
             debug('Memory Cache not initialized..Retrying');
-            caching('memory', { store: 'memory', max: MEMORY_CACHE_SIZE, ttl: MEMORY_CACHE_TIME }).then((cache) => {
+            caching('memory', { store: 'memory', isCacheableValue: isCacheableValue, max: MEMORY_CACHE_SIZE, ttl: MEMORY_CACHE_TIME }).then((cache) => {
                 _memoryCache = cache
                 if (!_memoryCache) {
                     throw new Error('Memory Cache not initialized')
@@ -233,7 +240,6 @@ class CacheService {
     }
 
     getMultiCache() {
-
         if (_multiCache) {
             return _multiCache
         } else {
@@ -320,10 +326,11 @@ class CacheService {
                     metrics.histogram({ name: `cachemanager.${metricName}.elapsed`, value: getElapsed });
                     metrics.counter({ name: `cachemanager.${metricName}.retreiver` });
                 }
-                _staleCache.set(cacheKey, returnPayload);
+                if (returnPayload) {
+                    _staleCache.set(cacheKey, returnPayload);
+                }
                 return returnPayload;
             }, opts.cacluateTTL(ttl)).then(payload => {
-
                 if (fromSource) {
                     return payload;
                 } else {
@@ -331,7 +338,7 @@ class CacheService {
                     if (metrics) {
                         metrics.counter({ name: `cachemanager.${metricName}.cache` });
                     }
-                    if (!staleCacheEntry) {
+                    if (!staleCacheEntry && payload) {
                         _staleCache.set(cacheKey, payload);
                     }
                     return payload;
@@ -394,29 +401,9 @@ class CacheService {
 
 
     }
-    async purge({ key, isMaster }) {
-        let cacheKey = `${_keyPrefix}:${key}`;
-        let keysToBePurged;
-        try {
-            debug(`Searching for Keys to purge ${cacheKey}`);
-            keysToBePurged = await _redisCache.keys(cacheKey);
-        }
-        catch (error) {
-            console.error(error);
-        }
-        debug(`Keys to purge ${keysToBePurged}`);
-        keysToBePurged.forEach(async (key) => {
-            debug(`Purging Key from the the local Cache ${key} to Channel ${_cachePurgeChannel}`);
-            _memoryCache.del(key); //if you delete it from memory...its just gonna go back to redis
-            if (isMaster) {
-                _redisCache.del(key);
-            }
-            _publisher.publish(cachePurgeChannel, key);
-        });
 
-    }
     async fastPurge({ key, isMaster }) {
-        let cacheKey = `${_cacheKeyPrefix}:*${key}*`;
+        let cacheKey = `${_cacheKeyPrefix}:${key}*`;
         return new Promise((resolve, reject) => {
             try {
                 debug(`Looking for ${cacheKey} to Purge`);
@@ -450,8 +437,10 @@ class CacheService {
                 console.error(error);
             }
         });
-
-
+    }
+    memoryPurgeHandler({ channel, message }) {
+        debug(`${message} received on channel ${channel} for memoryPurge`);
+        _memoryCache.del(message); //if you delete it from memory...its just gonna go back to redis
     }
     async init({ config, metrics }) {
         if ((parseConfig({ config }))) {
@@ -487,8 +476,12 @@ class CacheService {
             _multiCache = multiCaching([_memoryCache, _redisCache]);
             debug(`Using InMemory Cache of ${_MEMORY_CACHE_TIME} seconds`);
             debug(`Using Redis Cache of ${_redisConfig.CACHE_TIME} seconds`);
-
+            function memoryPurgeHandler({ channel, message }) {
+                debug(`${message} received on channel ${channel} for memoryPurge`);
+                _memoryCache.del(message); //if you delete it from memory...its just gonna go back to redis
+            }
             subscriptionInit({ config: _redisConfigOptions, publisher: getPublisher(), subscriber: getSubscriber() })
+            subscribeToRedis({ channel: getCachePurgeChannel(), handler: memoryPurgeHandler });
         } else {
             throw new Error('Invalid Config');
         }
