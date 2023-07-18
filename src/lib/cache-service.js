@@ -19,6 +19,7 @@ let _redisConfig;
 let _redisCache;
 let _memoryCache;
 let _client;
+let _config;
 let _staleCache;
 let _rateLimiter;
 let _publisher;
@@ -39,6 +40,7 @@ const parseConfig = ({ config }) => {
         }
         _MEMORY_CACHE_TIME = config.CACHE.MEMORY.CACHE_TIME;
         _MEMORY_CACHE_SIZE = config.CACHE.MEMORY.CACHE_SIZE;
+        _config = config;
         _keyPrefix = `app:${config.NAME.SYSTEM}:${config.NAME.PRODUCT}:${config.ENVIRONMENT}:`;
         _cacheKeyPrefix = `${_keyPrefix}cache`;
         _cachePurgeChannel = `${_keyPrefix}purge`;
@@ -62,6 +64,9 @@ function isCacheableValue(value) {
 class CacheService {
     constructor() {
         this.cache = {};
+    }
+    keyPrefix() {
+        return `app:${this._config.NAME.SYSTEM}:${this._config.NAME.PRODUCT}:${this._config.ENVIRONMENT}`
     }
     get cachePurgeChannel() {
         if (_cachePurgeChannel) {
@@ -369,8 +374,21 @@ class CacheService {
 
 
     }
+    async listCurrentKeys({ keySuffix = null }) {
+        let searchKey = `${_keyPrefix}${keySuffix ? keySuffix : ""}*`;
+        return new Promise((resolve, reject) => {
+            try {
+                debug(`Looking for ${searchKey}`);
+                let keys = _publisher.keys(searchKey);
+                return resolve(keys);
+            }
+            catch (error) {
+                console.error(error);
+            }
+        });
+    }
     async listCurrentCacheKeys() {
-        let cacheKey = `${_cacheKeyPrefix}*`;
+        let cacheKey = `${_keyPrefix}*`;
         let currentKeys = [];
         return new Promise((resolve, reject) => {
             try {
@@ -504,10 +522,10 @@ export const { getRateLimiter,
     init,
     wrap,
     listCurrentCacheKeys,
+    listCurrentKeys,
     fastPurge,
     purge,
     cachePurgeChannel,
-
     multiCache,
     staleCache,
     publisher,
